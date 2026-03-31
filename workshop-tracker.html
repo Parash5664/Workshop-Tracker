@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop Launch Tracker — Knowing AI to Using AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --card: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #7c6af7;
+    --accent2: #f7a26a;
+    --accent3: #6af7c4;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --done: #6af7c4;
+    --active: #7c6af7;
+    --pending: #f7a26a;
+    --blocked: #f76a6a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+  /* BG grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(124,106,247,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(124,106,247,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 36px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,106,247,0.12);
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .badge::before { content: '●'; font-size: 8px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(22px, 5vw, 38px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 14px; }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+  .progress-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .progress-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
+  .progress-pct { font-size: 13px; color: var(--accent); font-weight: 600; }
+  .bar-bg {
+    background: var(--border);
+    border-radius: 999px;
+    height: 10px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  }
+  .phase-labels {
+    display: flex; justify-content: space-between;
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Phases */
+  .phases-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .phase {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .phase.is-active { border-color: var(--accent); }
+  .phase-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .phase-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .phase-num.done { background: rgba(106,247,196,0.15); color: var(--done); }
+  .phase-num.active { background: rgba(124,106,247,0.2); color: var(--accent); }
+  .phase-num.pending { background: rgba(247,162,106,0.1); color: var(--pending); }
+  .phase-info { flex: 1; }
+  .phase-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .phase-meta { font-size: 12px; color: var(--muted); }
+  .phase-status {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+  .phase-status.done { background: rgba(106,247,196,0.1); color: var(--done); }
+  .phase-status.active { background: rgba(124,106,247,0.15); color: var(--accent); animation: pulse 2s infinite; }
+  .phase-status.pending { background: rgba(247,162,106,0.1); color: var(--pending); }
+  .chevron {
+    font-size: 12px; color: var(--muted);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+  .phase.open .chevron { transform: rotate(180deg); }
+
+  /* Tasks */
+  .tasks { padding: 0 20px 18px; display: none; }
+  .phase.open .tasks { display: block; }
+  .task {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .task:first-child { border-top: none; }
+  .task-check {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: all 0.15s;
+  }
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .task-check.checked::after { content: '✓'; color: white; font-size: 11px; font-weight: 700; }
+  .task-text { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .task-text.checked { text-decoration: line-through; color: var(--muted); }
+  .task-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag-digital { background: rgba(124,106,247,0.12); color: var(--accent); }
+  .tag-outreach { background: rgba(247,162,106,0.12); color: var(--accent2); }
+  .tag-ops { background: rgba(106,247,196,0.12); color: var(--accent3); }
+
+  /* Note box */
+  .note-box {
+    background: rgba(124,106,247,0.07);
+    border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: #b0a8f0;
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .note-box strong { color: var(--accent); }
+
+  /* Info cards */
+  .info-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .info-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+  .info-card .val { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; }
+  .info-card .val.green { color: var(--done); }
+  .info-card .val.purple { color: var(--accent); }
+  .info-card .val.orange { color: var(--accent2); }
+
+  /* Mobile tip */
+  .mobile-tip {
+    background: rgba(106,247,196,0.07);
+    border: 1px solid rgba(106,247,196,0.2);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #9af7dc;
+    margin-top: 28px;
+    line-height: 1.6;
+  }
+  .mobile-tip strong { color: var(--accent3); }
+
+  footer { text-align: center; margin-top: 40px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="badge">Live Tracker</div>
+    <h1>Knowing AI to <span>Using AI</span><br>Workshop Launch</h1>
+    <p class="subtitle">Online · NPR 500 · 3 Hours · Certificate · 10 Sessions Target</p>
+  </div>
+
+  <!-- Workshop Info -->
+  <div class="info-row">
+    <div class="info-card"><div class="label">Fee</div><div class="val green">NPR 500</div></div>
+    <div class="info-card"><div class="label">Duration</div><div class="val purple">3 Hours</div></div>
+    <div class="info-card"><div class="label">Mode</div><div class="val orange">Online</div></div>
+    <div class="info-card"><div class="label">Target Sessions</div><div class="val">10 🎯</div></div>
+    <div class="info-card"><div class="label">Certificate</div><div class="val green">✓ Provided</div></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num" id="s-done" style="color:var(--done)">0</div>
+      <div class="stat-label">Tasks Done</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="s-total" style="color:var(--muted)">0</div>
+      <div class="stat-label">Total Tasks</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="s-phase" style="color:var(--accent)">—</div>
+      <div class="stat-label">Current Phase</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="s-revenue" style="color:var(--accent2)">0</div>
+      <div class="stat-label">Est. Revenue (NPR)</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar-wrap">
+    <div class="progress-header">
+      <span class="progress-title">Overall Launch Progress</span>
+      <span class="progress-pct" id="pct">0%</span>
+    </div>
+    <div class="bar-bg"><div class="bar-fill" id="bar" style="width:0%"></div></div>
+    <div class="phase-labels">
+      <span>Course Build</span><span>Marketing</span><span>Enrollment</span><span>Delivery</span><span>Certificates</span>
+    </div>
+  </div>
+
+  <!-- Phases -->
+  <div class="phases-title">📋 Phase-by-Phase Tracker</div>
+
+  <div id="phases"></div>
+
+  <div class="mobile-tip">
+    ✈️ <strong>Mussoorie Travel Mode:</strong> This tracker works fully on mobile. Tap phases to expand, check off tasks as you go — even from the hills! Share enrollment links via WhatsApp, respond to Facebook DMs, and follow up with college contacts all from your phone.
+  </div>
+
+  <footer>Dursikshya Education Network · Built for Parash · 2026</footer>
+</div>
+
+<script>
+const PHASES = [
+  {
+    id: 'course',
+    name: '🎓 Phase 1 — Course & Content Build',
+    meta: 'Build the workshop content before going live',
+    status: 'active',
+    note: 'This is your foundation. No marketing without a solid product first!',
+    tasks: [
+      { text: 'Define workshop outline: 3-hour session structure (intro, hands-on, wrap-up)', tag: 'ops' },
+      { text: 'Prepare presentation slides (Canva or PPT) — branded with Dursikshya + AI theme', tag: 'ops' },
+      { text: 'Prepare demo activities: "Using AI tools" hands-on exercises', tag: 'ops' },
+      { text: 'Finalize registration form (Google Form or Tally.so — free)', tag: 'digital' },
+      { text: 'Set up payment collection: eSewa / Khalti / bank QR for NPR 500', tag: 'ops' },
+      { text: 'Design certificate template (Canva) — with participant name field, date, signature', tag: 'ops' },
+      { text: 'Choose online platform: Google Meet or Zoom (free tier OK for start)', tag: 'digital' },
+      { text: 'Do a dry-run / test session with a friend or colleague', tag: 'ops' },
+    ]
+  },
+  {
+    id: 'digital',
+    name: '📣 Phase 2 — Digital Marketing (Facebook + Boost)',
+    meta: 'Reach online audience, generate enquiries via Facebook',
+    status: 'pending',
+    note: 'Target: AI-curious students, young professionals, job seekers in Nepal. Boost NPR 500–1000 for 3–5 days.',
+    tasks: [
+      { text: 'Design eye-catching Facebook post graphic (Canva) — mention date, fee, certificate', tag: 'digital' },
+      { text: 'Write compelling Facebook post copy (benefits-focused, not just features)', tag: 'digital' },
+      { text: 'Post on your Facebook page + personal profile', tag: 'digital' },
+      { text: 'Share in relevant FB groups: Nepal IT, Students, Freelancers, Career groups', tag: 'digital' },
+      { text: 'Set up Facebook Boost (budget: NPR 500–1500, audience: 18–35, Nepal, interested in AI/tech)', tag: 'digital' },
+      { text: 'Post on LinkedIn — tag Dursikshya, IBM, relevant people', tag: 'digital' },
+      { text: 'Share registration link in WhatsApp groups (college contacts, friends)', tag: 'digital' },
+      { text: 'Track enquiries daily — reply within 2 hours for best conversion', tag: 'ops' },
+    ]
+  },
+  {
+    id: 'college',
+    name: '🏫 Phase 3 — College & Institutional Outreach',
+    meta: 'Visit colleges, pitch group enrollments, tie-ups',
+    status: 'pending',
+    note: 'Target 5–10 students per college = bulk enrollment. Offer group discount or college-branded certificate.',
+    tasks: [
+      { text: 'List 5 target colleges in your area (start with familiar ones)', tag: 'outreach' },
+      { text: 'Prepare a 1-page workshop brochure PDF to share / print', tag: 'outreach' },
+      { text: 'Visit college HOD / coordinator — pitch the workshop as career skill', tag: 'outreach' },
+      { text: 'Offer bulk deal: 10+ students = NPR 400 each (creates urgency)', tag: 'outreach' },
+      { text: 'Contact CEO/principal at Monastic and other key institutional partners', tag: 'outreach' },
+      { text: 'Collect interested student list + contact details from colleges', tag: 'outreach' },
+      { text: 'Follow up with colleges within 3 days of visit', tag: 'outreach' },
+    ]
+  },
+  {
+    id: 'enroll',
+    name: '📝 Phase 4 — Enrollment & Confirmation',
+    meta: 'Convert enquiries to paid registrations',
+    status: 'pending',
+    note: 'Minimum viable: 15 paid students per session. At NPR 500 = NPR 7,500/session × 10 = NPR 75,000 target.',
+    tasks: [
+      { text: 'Send registration link to all enquiries via WhatsApp / Messenger', tag: 'ops' },
+      { text: 'Confirm payment: ask participants to send screenshot after paying', tag: 'ops' },
+      { text: 'Add confirmed students to WhatsApp group for that session', tag: 'ops' },
+      { text: 'Send confirmation message with: date, time, Zoom/Meet link, what to prepare', tag: 'digital' },
+      { text: 'Send reminder 24 hours before workshop', tag: 'digital' },
+      { text: 'Send reminder 1 hour before workshop', tag: 'digital' },
+    ]
+  },
+  {
+    id: 'delivery',
+    name: '🚀 Phase 5 — Workshop Delivery',
+    meta: 'Run the live 3-hour online session',
+    status: 'pending',
+    note: 'Record the session (with permission) — future use for content / proofs for marketing.',
+    tasks: [
+      { text: 'Open Zoom/Meet 10 mins early — welcome participants', tag: 'ops' },
+      { text: 'Take attendance / screenshot of participants for records', tag: 'ops' },
+      { text: 'Deliver 3-hour session per outline', tag: 'ops' },
+      { text: 'Collect feedback form at end (Google Form — 5 questions max)', tag: 'digital' },
+      { text: 'Take group screenshot for social media post-workshop', tag: 'digital' },
+      { text: 'Note: mark session number completed (1/10, 2/10…)', tag: 'ops' },
+    ]
+  },
+  {
+    id: 'certificate',
+    name: '🏅 Phase 6 — Certificate & Post-Workshop',
+    meta: 'Deliver certificates, collect testimonials, re-market',
+    status: 'pending',
+    note: 'Certificates = social proof. Ask participants to post on LinkedIn/FB and tag you!',
+    tasks: [
+      { text: 'Generate certificates: fill names in Canva template, export as PDF', tag: 'ops' },
+      { text: 'Send certificates via email or WhatsApp within 48 hours', tag: 'ops' },
+      { text: 'Ask 2–3 participants for a short video/text testimonial', tag: 'digital' },
+      { text: 'Post workshop success on Facebook + LinkedIn (group photo + stats)', tag: 'digital' },
+      { text: 'Announce next session date immediately to warm audience', tag: 'digital' },
+      { text: 'Update this tracker: mark session complete, count revenue', tag: 'ops' },
+    ]
+  }
+];
+
+const SAVED_KEY = 'workshop_tracker_v1';
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || {}; } catch { return {}; }
+}
+function saveState(s) {
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(s)); } catch {}
+}
+
+let state = loadState();
+let openPhases = new Set();
+
+function renderPhases() {
+  const container = document.getElementById('phases');
+  container.innerHTML = '';
+  let totalDone = 0, totalTasks = 0;
+  let currentPhaseNum = '—';
+
+  PHASES.forEach((phase, pi) => {
+    const pTasks = state[phase.id] || {};
+    const doneCnt = Object.values(pTasks).filter(Boolean).length;
+    const totalCnt = phase.tasks.length;
+    totalDone += doneCnt;
+    totalTasks += totalCnt;
+
+    const allDone = doneCnt === totalCnt;
+    const anyDone = doneCnt > 0;
+    const statusClass = allDone ? 'done' : anyDone ? 'active' : 'pending';
+    const statusLabel = allDone ? 'Complete' : anyDone ? 'In Progress' : 'Pending';
+
+    if (!allDone && currentPhaseNum === '—') currentPhaseNum = pi + 1;
+
+    const div = document.createElement('div');
+    div.className = 'phase' + (openPhases.has(phase.id) ? ' open' : '') + (statusClass === 'active' ? ' is-active' : '');
+    div.innerHTML = `
+      <div class="phase-header" onclick="togglePhase('${phase.id}')">
+        <div class="phase-num ${statusClass}">${allDone ? '✓' : pi + 1}</div>
+        <div class="phase-info">
+          <div class="phase-name">${phase.name}</div>
+          <div class="phase-meta">${phase.meta} · ${doneCnt}/${totalCnt} tasks</div>
+        </div>
+        <div class="phase-status ${statusClass}">${statusLabel}</div>
+        <div class="chevron">▼</div>
+      </div>
+      <div class="tasks">
+        ${phase.note ? `<div class="note-box">💡 <strong>Tip:</strong> ${phase.note}</div>` : ''}
+        ${phase.tasks.map((t, ti) => {
+          const checked = pTasks[ti] || false;
+          return `
+          <div class="task">
+            <div class="task-check ${checked ? 'checked' : ''}" onclick="toggleTask('${phase.id}', ${ti})"></div>
+            <div class="task-text ${checked ? 'checked' : ''}">${t.text}</div>
+            <div class="task-tag tag-${t.tag}">${t.tag}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  const pct = Math.round((totalDone / totalTasks) * 100);
+  document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('pct').textContent = pct + '%';
+  document.getElementById('s-done').textContent = totalDone;
+  document.getElementById('s-total').textContent = totalTasks;
+  document.getElementById('s-phase').textContent = currentPhaseNum;
+
+  // Rough revenue estimate from enrollment phase
+  const enrollState = state['enroll'] || {};
+  const enrollDone = Object.values(enrollState).filter(Boolean).length;
+  const estStudents = Math.round((enrollDone / 6) * 20);
+  const sessions = Math.floor(totalDone / 20) || 0;
+  document.getElementById('s-revenue').textContent = (estStudents * 500).toLocaleString();
+}
+
+function togglePhase(id) {
+  if (openPhases.has(id)) openPhases.delete(id);
+  else openPhases.add(id);
+  renderPhases();
+}
+
+function toggleTask(phaseId, taskIdx) {
+  if (!state[phaseId]) state[phaseId] = {};
+  state[phaseId][taskIdx] = !state[phaseId][taskIdx];
+  saveState(state);
+  renderPhases();
+}
+
+// Auto-open first non-complete phase
+PHASES.forEach(p => {
+  const done = Object.values(state[p.id] || {}).filter(Boolean).length;
+  if (done < p.tasks.length && !openPhases.size) openPhases.add(p.id);
+});
+
+renderPhases();
+</script>
+</body>
+</html>
